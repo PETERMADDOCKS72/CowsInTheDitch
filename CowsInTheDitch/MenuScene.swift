@@ -54,6 +54,15 @@ class MenuScene: SKScene {
         instructions.fontColor = SKColor(white: 1.0, alpha: 0.7)
         instructions.position = CGPoint(x: cx, y: cy - 155)
         addChild(instructions)
+
+        // Version number
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1"
+        let versionLabel = SKLabelNode(fontNamed: "AvenirNext-Regular")
+        versionLabel.text = "v\(version)"
+        versionLabel.fontSize = 14
+        versionLabel.fontColor = SKColor(white: 1.0, alpha: 0.4)
+        versionLabel.position = CGPoint(x: cx, y: 20)
+        addChild(versionLabel)
     }
 
     /// Transitions to the GameScene when the player taps anywhere.

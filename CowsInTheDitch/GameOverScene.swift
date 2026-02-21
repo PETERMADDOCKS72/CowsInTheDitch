@@ -1,13 +1,16 @@
 import SpriteKit
 
-/// Scene displayed after the player loses all lives, showing score and high score.
+/// Scene displayed after the player loses all lives, showing score and high score with sprite visuals.
 class GameOverScene: SKScene {
 
     var finalScore: Int = 0
 
-    /// Saves the high score if beaten and builds the game over UI with score and replay prompt.
+    /// Saves the high score if beaten and builds the game over UI with sprites and animations.
     override func didMove(to view: SKView) {
-        backgroundColor = SKColor(red: 0.15, green: 0.15, blue: 0.2, alpha: 1.0)
+        backgroundColor = SKColor(red: 0.1, green: 0.1, blue: 0.15, alpha: 1.0)
+
+        let cx = size.width / 2
+        let loader = SpriteLoader.shared
 
         // Save high score
         let previousBest = UserDefaults.standard.integer(forKey: "CowsInTheDitchHighScore")
@@ -17,27 +20,84 @@ class GameOverScene: SKScene {
         }
         let highScore = max(finalScore, previousBest)
 
-        // Game Over title
-        let title = SKLabelNode(fontNamed: "AvenirNext-Bold")
-        title.text = "Game Over"
-        title.fontSize = 40
-        title.fontColor = SKColor(red: 1.0, green: 0.3, blue: 0.3, alpha: 1.0)
-        title.position = CGPoint(x: size.width / 2, y: size.height * 0.65)
-        addChild(title)
+        // Dark gradient overlay (subtle vignette effect via semi-transparent nodes)
+        let topOverlay = SKSpriteNode(color: SKColor(red: 0.05, green: 0.05, blue: 0.1, alpha: 0.3),
+                                       size: CGSize(width: size.width, height: size.height / 2))
+        topOverlay.anchorPoint = .zero
+        topOverlay.position = CGPoint(x: 0, y: size.height / 2)
+        topOverlay.zPosition = -1
+        addChild(topOverlay)
 
-        // Sad cow
-        let sadCow = SKLabelNode(text: "\u{1F404}")
-        sadCow.fontSize = 60
-        sadCow.position = CGPoint(x: size.width / 2, y: size.height * 0.5)
+        // Game Over banner sprite (slides in with bounce)
+        let banner = loader.gameOverBanner()
+        banner.size = CGSize(width: 300, height: 80)
+        banner.position = CGPoint(x: cx, y: size.height + 60)
+        banner.zPosition = 5
+        addChild(banner)
+
+        let slideIn = SKAction.moveTo(y: size.height * 0.68, duration: 0.6)
+        slideIn.timingMode = .easeOut
+        let bounce = SKAction.sequence([
+            SKAction.moveBy(x: 0, y: 15, duration: 0.15),
+            SKAction.moveBy(x: 0, y: -15, duration: 0.15),
+        ])
+        banner.run(SKAction.sequence([slideIn, bounce]))
+
+        // Drowning cow sprite
+        let sadCow = SKSpriteNode(texture: loader.texture("cow_drowning"))
+        sadCow.setScale(0.8)
+        sadCow.position = CGPoint(x: cx, y: size.height * 0.52)
+        sadCow.zPosition = 5
+        sadCow.alpha = 0
         addChild(sadCow)
 
-        // Score
-        let scoreLabel = SKLabelNode(fontNamed: "AvenirNext-Medium")
-        scoreLabel.text = "Cows Saved: \(finalScore)"
-        scoreLabel.fontSize = 28
+        sadCow.run(SKAction.sequence([
+            SKAction.wait(forDuration: 0.5),
+            SKAction.fadeIn(withDuration: 0.3),
+        ]))
+
+        // Score badge background
+        let scoreBg = loader.scoreBadge()
+        scoreBg.size = CGSize(width: 240, height: 60)
+        scoreBg.position = CGPoint(x: cx, y: size.height * 0.38)
+        scoreBg.zPosition = 5
+        scoreBg.alpha = 0
+        addChild(scoreBg)
+
+        scoreBg.run(SKAction.sequence([
+            SKAction.wait(forDuration: 0.8),
+            SKAction.fadeIn(withDuration: 0.3),
+        ]))
+
+        // Score count-up animation
+        let scoreLabel = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        scoreLabel.text = "Cows Saved: 0"
+        scoreLabel.fontSize = 26
         scoreLabel.fontColor = .white
-        scoreLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.38)
+        scoreLabel.horizontalAlignmentMode = .center
+        scoreLabel.verticalAlignmentMode = .center
+        scoreLabel.position = CGPoint(x: cx, y: size.height * 0.38)
+        scoreLabel.zPosition = 6
+        scoreLabel.alpha = 0
         addChild(scoreLabel)
+
+        scoreLabel.run(SKAction.sequence([
+            SKAction.wait(forDuration: 0.8),
+            SKAction.fadeIn(withDuration: 0.3),
+        ]))
+
+        // Count up the score
+        if finalScore > 0 {
+            let countSteps = min(finalScore, 30)
+            let stepDuration = 1.0 / Double(countSteps)
+            var countActions: [SKAction] = [SKAction.wait(forDuration: 1.2)]
+            for i in 1...countSteps {
+                let displayScore = Int(Double(finalScore) * Double(i) / Double(countSteps))
+                countActions.append(SKAction.run { scoreLabel.text = "Cows Saved: \(displayScore)" })
+                countActions.append(SKAction.wait(forDuration: stepDuration))
+            }
+            scoreLabel.run(SKAction.sequence(countActions))
+        }
 
         // High score / new record
         let highScoreLabel = SKLabelNode(fontNamed: "AvenirNext-Bold")
@@ -49,13 +109,33 @@ class GameOverScene: SKScene {
                 SKAction.scale(to: 1.15, duration: 0.4),
                 SKAction.scale(to: 1.0, duration: 0.4)
             ]))
-            highScoreLabel.run(pulse)
+            highScoreLabel.run(SKAction.sequence([
+                SKAction.wait(forDuration: 2.5),
+                SKAction.run { highScoreLabel.alpha = 1.0 },
+                pulse
+            ]))
+            highScoreLabel.alpha = 0
+
+            // Golden particle burst for new high score
+            run(SKAction.sequence([
+                SKAction.wait(forDuration: 2.5),
+                SKAction.run { [weak self] in
+                    guard let self = self else { return }
+                    self.addChild(ParticleEffects.goldenBurst(at: CGPoint(x: cx, y: self.size.height * 0.33)))
+                }
+            ]))
         } else {
             highScoreLabel.text = "Best: \(highScore)"
             highScoreLabel.fontColor = SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 0.8)
+            highScoreLabel.alpha = 0
+            highScoreLabel.run(SKAction.sequence([
+                SKAction.wait(forDuration: 1.5),
+                SKAction.fadeIn(withDuration: 0.3)
+            ]))
         }
         highScoreLabel.fontSize = 20
-        highScoreLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.33)
+        highScoreLabel.position = CGPoint(x: cx, y: size.height * 0.31)
+        highScoreLabel.zPosition = 6
         addChild(highScoreLabel)
 
         // Message based on performance
@@ -71,27 +151,56 @@ class GameOverScene: SKScene {
         }
         message.fontSize = 18
         message.fontColor = SKColor(white: 1.0, alpha: 0.7)
-        message.position = CGPoint(x: size.width / 2, y: size.height * 0.27)
+        message.position = CGPoint(x: cx, y: size.height * 0.25)
+        message.zPosition = 5
+        message.alpha = 0
         addChild(message)
 
-        // Tap to play again
-        let playAgain = SKLabelNode(fontNamed: "AvenirNext-Medium")
-        playAgain.text = "Tap to Play Again"
-        playAgain.fontSize = 22
-        playAgain.fontColor = SKColor(red: 0.5, green: 1.0, blue: 0.5, alpha: 1.0)
-        playAgain.position = CGPoint(x: size.width / 2, y: size.height * 0.18)
-        addChild(playAgain)
+        message.run(SKAction.sequence([
+            SKAction.wait(forDuration: 1.8),
+            SKAction.fadeIn(withDuration: 0.3)
+        ]))
 
-        let fadeOut = SKAction.fadeAlpha(to: 0.3, duration: 0.8)
-        let fadeIn = SKAction.fadeAlpha(to: 1.0, duration: 0.8)
-        playAgain.run(SKAction.repeatForever(SKAction.sequence([fadeOut, fadeIn])))
+        // Replay button sprite
+        let replayBtn = loader.replayButton()
+        replayBtn.size = CGSize(width: 220, height: 65)
+        replayBtn.position = CGPoint(x: cx, y: size.height * 0.15)
+        replayBtn.zPosition = 5
+        replayBtn.alpha = 0
+        addChild(replayBtn)
+
+        replayBtn.run(SKAction.sequence([
+            SKAction.wait(forDuration: 2.0),
+            SKAction.fadeIn(withDuration: 0.3),
+            SKAction.repeatForever(SKAction.sequence([
+                SKAction.scale(to: 1.05, duration: 0.8),
+                SKAction.scale(to: 1.0, duration: 0.8),
+            ]))
+        ]))
     }
 
-    /// Transitions to a new GameScene when the player taps to replay.
+    /// Transitions to a new GameScene when the player taps the replay button.
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        let gameScene = GameScene(size: size)
-        gameScene.scaleMode = .resizeFill
-        let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentScene(gameScene, transition: transition)
+        guard let touch = touches.first else { return }
+        let location = touch.location(in: self)
+
+        let tappedNodes = nodes(at: location)
+        let tappedButton = tappedNodes.contains { $0.name == "replayButton" }
+
+        if tappedButton {
+            if let btn = childNode(withName: "replayButton") {
+                btn.run(SKAction.sequence([
+                    SKAction.scale(to: 0.9, duration: 0.1),
+                    SKAction.scale(to: 1.0, duration: 0.1),
+                    SKAction.run { [weak self] in
+                        guard let self = self else { return }
+                        let gameScene = GameScene(size: self.size)
+                        gameScene.scaleMode = .resizeFill
+                        let transition = SKTransition.fade(withDuration: 0.5)
+                        self.view?.presentScene(gameScene, transition: transition)
+                    }
+                ]))
+            }
+        }
     }
 }

@@ -7,13 +7,15 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		AA000001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100001; };
-		AA000002 /* GameViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100002; };
-		AA000003 /* MenuScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100003; };
-		AA000004 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100004; };
-		AA000005 /* GameOverScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100005; };
-		AA000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA100006; };
-
+		AA000001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100001 /* AppDelegate.swift */; };
+		AA000002 /* GameViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100002 /* GameViewController.swift */; };
+		AA000003 /* MenuScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100003 /* MenuScene.swift */; };
+		AA000004 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100004 /* GameScene.swift */; };
+		AA000005 /* GameOverScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100005 /* GameOverScene.swift */; };
+		AA000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA100006 /* Assets.xcassets */; };
+		AA000007 /* SpriteLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100009 /* SpriteLoader.swift */; };
+		AA000008 /* ParticleEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100010 /* ParticleEffects.swift */; };
+		AA000009 /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100011 /* SoundManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -23,8 +25,10 @@
 		AA100004 /* GameScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScene.swift; sourceTree = "<group>"; };
 		AA100005 /* GameOverScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameOverScene.swift; sourceTree = "<group>"; };
 		AA100006 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-
 		AA100008 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AA100009 /* SpriteLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpriteLoader.swift; sourceTree = "<group>"; };
+		AA100010 /* ParticleEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleEffects.swift; sourceTree = "<group>"; };
+		AA100011 /* SoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundManager.swift; sourceTree = "<group>"; };
 		AA200001 /* CowsInTheDitch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CowsInTheDitch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -50,13 +54,15 @@
 		AA400002 /* CowsInTheDitch */ = {
 			isa = PBXGroup;
 			children = (
-				AA100001 /* AppDelegate.swift */,
 				AA100002 /* GameViewController.swift */,
 				AA100003 /* MenuScene.swift */,
+				AA100001 /* AppDelegate.swift */,
 				AA100004 /* GameScene.swift */,
 				AA100005 /* GameOverScene.swift */,
+				AA100009 /* SpriteLoader.swift */,
+				AA100010 /* ParticleEffects.swift */,
+				AA100011 /* SoundManager.swift */,
 				AA100006 /* Assets.xcassets */,
-
 				AA100008 /* Info.plist */,
 			);
 			path = CowsInTheDitch;
@@ -129,7 +135,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				AA000006 /* Assets.xcassets in Resources */,
-
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -145,6 +150,9 @@
 				AA000003 /* MenuScene.swift in Sources */,
 				AA000004 /* GameScene.swift in Sources */,
 				AA000005 /* GameOverScene.swift in Sources */,
+				AA000007 /* SpriteLoader.swift in Sources */,
+				AA000008 /* ParticleEffects.swift in Sources */,
+				AA000009 /* SoundManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -273,8 +281,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2S6EKTYAHU;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = CowsInTheDitch/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -285,8 +295,9 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.cowsintheditch.game;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cowsintheditch2.game;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -298,8 +309,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2S6EKTYAHU;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = CowsInTheDitch/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -310,8 +323,9 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.cowsintheditch.game;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cowsintheditch2.game;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -340,7 +354,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
 	};
 	rootObject = AA800001 /* Project object */;
 }

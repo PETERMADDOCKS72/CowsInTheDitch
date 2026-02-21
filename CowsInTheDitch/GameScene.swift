@@ -36,7 +36,7 @@ class GameScene: SKScene {
 
     // MARK: - Game state
 
-    private var farmer: SKNode!
+    private var farmer: SKSpriteNode!
     private var isDraggingFarmer = false
     private var dragOffset = CGPoint.zero
     private var score = 0
@@ -52,13 +52,20 @@ class GameScene: SKScene {
     private var gateState: GateState = .closed
     private var gateTimer: TimeInterval = 1.0
     private var gateOpenAmount: CGFloat = 0.0
-    private var leftDoor: SKNode!
-    private var rightDoor: SKNode!
-    private var gateIndicator: SKShapeNode!
+    private var leftDoor: SKSpriteNode!
+    private var rightDoor: SKSpriteNode!
+    private var gateIndicator: SKSpriteNode!
+
+    // Dust effect throttle
+    private var lastDustTime: TimeInterval = 0
+
+    // Giddy-up sound throttle
+    private var lastGiddyUpTime: TimeInterval = 0
 
     // MARK: - HUD
 
     private var scoreLabel: SKLabelNode!
+    private var scoreBadge: SKSpriteNode!
     private var livesDisplay: SKNode!
 
     // MARK: - Computed difficulty
@@ -87,49 +94,85 @@ class GameScene: SKScene {
 
     /// Initializes all visual elements and game objects when the scene is presented.
     override func didMove(to view: SKView) {
-        backgroundColor = SKColor(red: 0.3, green: 0.65, blue: 0.15, alpha: 1.0)
+        backgroundColor = SKColor(red: 0.45, green: 0.75, blue: 0.95, alpha: 1.0)
+        setupBackground()
         setupDitch()
         setupSafePasture()
         setupFence()
         setupGate()
         setupFarmer()
         setupHUD()
+        setupClouds()
     }
 
-    /// Creates the water-filled ditch at the bottom of the screen with a ripple animation.
+    /// Creates tiled grass background for the play field.
+    private func setupBackground() {
+        let loader = SpriteLoader.shared
+        let tileSize: CGFloat = 170  // ~512/3
+        let fieldBottom = ditchHeight
+        let fieldTop = fenceY
+
+        let cols = Int(ceil(size.width / tileSize)) + 1
+        let rows = Int(ceil((fieldTop - fieldBottom) / tileSize)) + 1
+
+        for col in 0..<cols {
+            for row in 0..<rows {
+                let tile = loader.backgroundGrassTile()
+                tile.anchorPoint = .zero
+                tile.size = CGSize(width: tileSize, height: tileSize)
+                tile.position = CGPoint(x: CGFloat(col) * tileSize,
+                                        y: fieldBottom + CGFloat(row) * tileSize)
+                tile.zPosition = -1
+                addChild(tile)
+            }
+        }
+    }
+
+    /// Creates the water-filled ditch at the bottom of the screen with animated water.
     private func setupDitch() {
-        let ditch = SKShapeNode(rect: CGRect(x: 0, y: 0, width: size.width, height: ditchHeight))
-        ditch.fillColor = SKColor(red: 0.2, green: 0.35, blue: 0.6, alpha: 1.0)
-        ditch.strokeColor = SKColor(red: 0.3, green: 0.2, blue: 0.1, alpha: 1.0)
-        ditch.lineWidth = 3
-        ditch.name = "ditch"
-        addChild(ditch)
+        let loader = SpriteLoader.shared
 
-        let edge = SKShapeNode(rect: CGRect(x: 0, y: ditchHeight - 2, width: size.width, height: 4))
-        edge.fillColor = SKColor(red: 0.4, green: 0.25, blue: 0.1, alpha: 1.0)
-        edge.strokeColor = .clear
+        // Animated water
+        let ditchWater = loader.ditchWaterSprite(frame: 1)
+        ditchWater.anchorPoint = .zero
+        ditchWater.size = CGSize(width: size.width, height: ditchHeight)
+        ditchWater.position = .zero
+        ditchWater.zPosition = 1
+        addChild(ditchWater)
+
+        let waterTextures = loader.ditchWaterTextures()
+        let animateWater = SKAction.animate(with: waterTextures, timePerFrame: 0.5)
+        ditchWater.run(SKAction.repeatForever(animateWater))
+
+        // Ditch edge
+        let edge = loader.ditchEdgeSprite()
+        edge.anchorPoint = CGPoint(x: 0, y: 0)
+        edge.size = CGSize(width: size.width, height: 8)
+        edge.position = CGPoint(x: 0, y: ditchHeight - 4)
+        edge.zPosition = 2
         addChild(edge)
-
-        let rippleLabel = SKLabelNode(text: "~ ~ ~ ~ ~ ~ ~ ~ ~ ~")
-        rippleLabel.fontSize = 14
-        rippleLabel.fontColor = SKColor(red: 0.4, green: 0.55, blue: 0.8, alpha: 0.6)
-        rippleLabel.position = CGPoint(x: size.width / 2, y: ditchHeight / 2)
-        addChild(rippleLabel)
-
-        let moveLeft = SKAction.moveBy(x: -20, y: 0, duration: 1.5)
-        let moveRight = SKAction.moveBy(x: 20, y: 0, duration: 1.5)
-        rippleLabel.run(SKAction.repeatForever(SKAction.sequence([moveLeft, moveRight])))
     }
 
-    /// Creates the darker green safe pasture area above the fence with a label.
+    /// Creates the darker green safe pasture area above the fence.
     private func setupSafePasture() {
+        let loader = SpriteLoader.shared
         let pastureHeight = size.height - fenceY - fenceThickness
-        let pasture = SKShapeNode(rect: CGRect(x: 0, y: fenceY + fenceThickness,
-                                                width: size.width, height: pastureHeight))
-        pasture.fillColor = SKColor(red: 0.25, green: 0.55, blue: 0.12, alpha: 1.0)
-        pasture.strokeColor = .clear
-        pasture.zPosition = 0
-        addChild(pasture)
+        let tileSize: CGFloat = 170
+
+        let cols = Int(ceil(size.width / tileSize)) + 1
+        let rows = Int(ceil(pastureHeight / tileSize)) + 1
+
+        for col in 0..<cols {
+            for row in 0..<rows {
+                let tile = loader.safePastureTile()
+                tile.anchorPoint = .zero
+                tile.size = CGSize(width: tileSize, height: tileSize)
+                tile.position = CGPoint(x: CGFloat(col) * tileSize,
+                                        y: fenceY + fenceThickness + CGFloat(row) * tileSize)
+                tile.zPosition = 0
+                addChild(tile)
+            }
+        }
 
         let safeLabel = SKLabelNode(fontNamed: "AvenirNext-Bold")
         safeLabel.text = "SAFE PASTURE"
@@ -140,176 +183,123 @@ class GameScene: SKScene {
         addChild(safeLabel)
     }
 
-    /// Draws the fence posts, rails, and gate frame posts on either side of the gate opening.
+    /// Draws the fence posts and rails on either side of the gate opening using sprite textures.
     private func setupFence() {
         let y = fenceY
-        let postColor = SKColor(red: 0.55, green: 0.35, blue: 0.15, alpha: 1.0)
-        let railColor = SKColor(red: 0.6, green: 0.4, blue: 0.2, alpha: 1.0)
-        let postHeight: CGFloat = 36
+        let postHeight: CGFloat = 40
+        let loader = SpriteLoader.shared
 
         let gateLeftEdge = gateCenterX - gateFullWidth / 2
         let gateRightEdge = gateCenterX + gateFullWidth / 2
 
-        drawFenceSection(from: 0, to: gateLeftEdge, y: y, postHeight: postHeight,
-                         postColor: postColor, railColor: railColor)
+        drawFenceSection(from: 0, to: gateLeftEdge, y: y, postHeight: postHeight, loader: loader)
+        drawFenceSection(from: gateRightEdge, to: size.width, y: y, postHeight: postHeight, loader: loader)
 
-        drawFenceSection(from: gateRightEdge, to: size.width, y: y, postHeight: postHeight,
-                         postColor: postColor, railColor: railColor)
-
+        // Gate posts (thicker)
         for x in [gateLeftEdge, gateRightEdge] {
-            let gatePost = SKShapeNode(rect: CGRect(x: x - 3, y: y - 4, width: 6, height: postHeight + 8))
-            gatePost.fillColor = SKColor(red: 0.45, green: 0.25, blue: 0.1, alpha: 1.0)
-            gatePost.strokeColor = SKColor(red: 0.3, green: 0.15, blue: 0.05, alpha: 1.0)
-            gatePost.lineWidth = 1
-            gatePost.zPosition = 7
-            addChild(gatePost)
+            let post = loader.gatePostSprite()
+            post.anchorPoint = CGPoint(x: 0.5, y: 0)
+            post.size = CGSize(width: 12, height: 48)
+            post.position = CGPoint(x: x, y: y - 4)
+            post.zPosition = 7
+            addChild(post)
         }
     }
 
-    /// Draws a horizontal fence section with evenly spaced posts and two rails.
+    /// Draws a horizontal fence section with evenly spaced posts and rails using sprites.
     private func drawFenceSection(from startX: CGFloat, to endX: CGFloat, y: CGFloat,
-                                   postHeight: CGFloat, postColor: SKColor, railColor: SKColor) {
+                                   postHeight: CGFloat, loader: SpriteLoader) {
         guard endX > startX else { return }
 
         let spacing: CGFloat = 35
         var x = startX
         while x <= endX {
-            let post = SKShapeNode(rect: CGRect(x: x - 2, y: y, width: 4, height: postHeight))
-            post.fillColor = postColor
-            post.strokeColor = .clear
+            let post = loader.fencePostSprite()
+            post.anchorPoint = CGPoint(x: 0.5, y: 0)
+            post.size = CGSize(width: 8, height: postHeight)
+            post.position = CGPoint(x: x, y: y)
             post.zPosition = 6
             addChild(post)
             x += spacing
         }
 
         for railOffset: CGFloat in [10, 24] {
-            let rail = SKShapeNode(rect: CGRect(x: startX, y: y + railOffset,
-                                                 width: endX - startX, height: 3))
-            rail.fillColor = railColor
-            rail.strokeColor = .clear
+            let rail = loader.fenceRailSprite()
+            rail.anchorPoint = .zero
+            rail.size = CGSize(width: endX - startX, height: 6)
+            rail.position = CGPoint(x: startX, y: y + railOffset)
             rail.zPosition = 6
             addChild(rail)
         }
     }
 
-    /// Creates the two sliding gate doors with cross-braces and the open/closed indicator dot.
+    /// Creates the two sliding gate doors and the open/closed indicator using sprites.
     private func setupGate() {
         let y = fenceY
-        let doorColor = SKColor(red: 0.65, green: 0.4, blue: 0.15, alpha: 1.0)
-        let doorHeight: CGFloat = 32
+        let loader = SpriteLoader.shared
+        let doorWidth = gateFullWidth / 2
+        let doorHeight: CGFloat = 36
 
-        leftDoor = SKNode()
+        leftDoor = loader.gateDoorSprite()
+        leftDoor.anchorPoint = CGPoint(x: 0, y: 0)
+        leftDoor.size = CGSize(width: doorWidth, height: doorHeight)
         leftDoor.position = CGPoint(x: gateCenterX - gateFullWidth / 2, y: y)
         leftDoor.zPosition = 7
-
-        let leftPanel = SKShapeNode(rect: CGRect(x: 0, y: 0,
-                                                   width: gateFullWidth / 2, height: doorHeight))
-        leftPanel.fillColor = doorColor
-        leftPanel.strokeColor = SKColor(red: 0.4, green: 0.2, blue: 0.05, alpha: 1.0)
-        leftPanel.lineWidth = 1.5
-        leftPanel.name = "panel"
-        leftDoor.addChild(leftPanel)
-
-        let leftBrace = SKShapeNode()
-        let leftPath = CGMutablePath()
-        leftPath.move(to: CGPoint(x: 2, y: 2))
-        leftPath.addLine(to: CGPoint(x: gateFullWidth / 2 - 2, y: doorHeight - 2))
-        leftBrace.path = leftPath
-        leftBrace.strokeColor = SKColor(red: 0.5, green: 0.3, blue: 0.1, alpha: 0.7)
-        leftBrace.lineWidth = 2
-        leftDoor.addChild(leftBrace)
-
         addChild(leftDoor)
 
-        rightDoor = SKNode()
+        rightDoor = loader.gateDoorSprite()
+        rightDoor.anchorPoint = CGPoint(x: 0, y: 0)
+        rightDoor.xScale = -1
+        rightDoor.size = CGSize(width: doorWidth, height: doorHeight)
         rightDoor.position = CGPoint(x: gateCenterX + gateFullWidth / 2, y: y)
         rightDoor.zPosition = 7
-
-        let rightPanel = SKShapeNode(rect: CGRect(x: -gateFullWidth / 2, y: 0,
-                                                    width: gateFullWidth / 2, height: doorHeight))
-        rightPanel.fillColor = doorColor
-        rightPanel.strokeColor = SKColor(red: 0.4, green: 0.2, blue: 0.05, alpha: 1.0)
-        rightPanel.lineWidth = 1.5
-        rightPanel.name = "panel"
-        rightDoor.addChild(rightPanel)
-
-        let rightBrace = SKShapeNode()
-        let rightPath = CGMutablePath()
-        rightPath.move(to: CGPoint(x: -gateFullWidth / 2 + 2, y: 2))
-        rightPath.addLine(to: CGPoint(x: -2, y: doorHeight - 2))
-        rightBrace.path = rightPath
-        rightBrace.strokeColor = SKColor(red: 0.5, green: 0.3, blue: 0.1, alpha: 0.7)
-        rightBrace.lineWidth = 2
-        rightDoor.addChild(rightBrace)
-
         addChild(rightDoor)
 
-        gateIndicator = SKShapeNode(circleOfRadius: 5)
+        gateIndicator = SKSpriteNode(texture: loader.gateIndicatorTexture(open: false))
+        gateIndicator.size = CGSize(width: 16, height: 16)
         gateIndicator.position = CGPoint(x: gateCenterX, y: fenceY + 42)
         gateIndicator.zPosition = 8
-        gateIndicator.strokeColor = .clear
         addChild(gateIndicator)
 
         updateGateDoorPositions()
     }
 
-    /// Positions the left and right gate doors based on the current open amount and updates the indicator color.
+    /// Positions the left and right gate doors based on the current open amount.
     private func updateGateDoorPositions() {
         let halfSlide = (gateFullWidth / 2) * gateOpenAmount
         leftDoor.position.x = gateCenterX - gateFullWidth / 2 - halfSlide
         rightDoor.position.x = gateCenterX + gateFullWidth / 2 + halfSlide
 
         let cowCanPass = currentGateOpening > cowRadius * 2.2
-        gateIndicator.fillColor = cowCanPass
-            ? SKColor(red: 0.2, green: 0.9, blue: 0.2, alpha: 0.8)
-            : SKColor(red: 0.9, green: 0.2, blue: 0.2, alpha: 0.8)
+        gateIndicator.texture = SpriteLoader.shared.gateIndicatorTexture(open: cowCanPass)
     }
 
-    /// Creates the farmer sprite with body, hat, and eyes at the center of the play field.
+    /// Creates the farmer sprite at the center of the play field.
     private func setupFarmer() {
-        farmer = SKNode()
+        farmer = SpriteLoader.shared.farmerSprite()
         farmer.position = CGPoint(x: size.width / 2, y: (ditchHeight + fenceY) / 2)
-        farmer.name = "farmer"
-
-        let body = SKShapeNode(circleOfRadius: farmerRadius)
-        body.fillColor = SKColor(red: 0.85, green: 0.5, blue: 0.2, alpha: 1.0)
-        body.strokeColor = SKColor(red: 0.6, green: 0.3, blue: 0.1, alpha: 1.0)
-        body.lineWidth = 2
-        farmer.addChild(body)
-
-        let hat = SKShapeNode(ellipseOf: CGSize(width: farmerRadius * 1.8, height: farmerRadius * 0.7))
-        hat.fillColor = SKColor(red: 0.55, green: 0.35, blue: 0.15, alpha: 1.0)
-        hat.strokeColor = SKColor(red: 0.4, green: 0.2, blue: 0.05, alpha: 1.0)
-        hat.lineWidth = 1.5
-        hat.position = CGPoint(x: 0, y: farmerRadius * 0.4)
-        farmer.addChild(hat)
-
-        let leftEye = SKShapeNode(circleOfRadius: 3)
-        leftEye.fillColor = .white
-        leftEye.strokeColor = .black
-        leftEye.lineWidth = 1
-        leftEye.position = CGPoint(x: -7, y: 2)
-        farmer.addChild(leftEye)
-
-        let rightEye = SKShapeNode(circleOfRadius: 3)
-        rightEye.fillColor = .white
-        rightEye.strokeColor = .black
-        rightEye.lineWidth = 1
-        rightEye.position = CGPoint(x: 7, y: 2)
-        farmer.addChild(rightEye)
-
+        farmer.zPosition = 5
         addChild(farmer)
     }
 
-    /// Creates the score label and lives display at the top of the screen.
+    /// Creates the HUD with score badge, score label, and heart-based lives display.
     private func setupHUD() {
+        let loader = SpriteLoader.shared
+
+        scoreBadge = loader.scoreBadge()
+        scoreBadge.size = CGSize(width: 160, height: 40)
+        scoreBadge.position = CGPoint(x: 90, y: size.height - 45)
+        scoreBadge.zPosition = 10
+        addChild(scoreBadge)
+
         scoreLabel = SKLabelNode(fontNamed: "AvenirNext-Bold")
         scoreLabel.text = "Saved: 0"
-        scoreLabel.fontSize = 20
+        scoreLabel.fontSize = 18
         scoreLabel.fontColor = .white
-        scoreLabel.horizontalAlignmentMode = .left
-        scoreLabel.position = CGPoint(x: 16, y: size.height - 50)
-        scoreLabel.zPosition = 10
+        scoreLabel.horizontalAlignmentMode = .center
+        scoreLabel.verticalAlignmentMode = .center
+        scoreLabel.position = CGPoint(x: 90, y: size.height - 45)
+        scoreLabel.zPosition = 11
         addChild(scoreLabel)
 
         livesDisplay = SKNode()
@@ -319,60 +309,53 @@ class GameScene: SKScene {
         updateLivesDisplay()
     }
 
-    /// Rebuilds the heart icons in the lives display to reflect the current life count.
+    /// Rebuilds the heart sprites in the lives display to reflect the current life count.
     private func updateLivesDisplay() {
         livesDisplay.removeAllChildren()
-        for i in 0..<lives {
-            let heart = SKLabelNode(text: "\u{2764}\u{FE0F}")
-            heart.fontSize = 22
-            heart.horizontalAlignmentMode = .right
-            heart.position = CGPoint(x: -CGFloat(i) * 30, y: 0)
+        let loader = SpriteLoader.shared
+        for i in 0..<3 {
+            let heart = loader.heartSprite(full: i < lives)
+            heart.size = CGSize(width: 28, height: 26)
+            heart.position = CGPoint(x: -CGFloat(i) * 32, y: 0)
             livesDisplay.addChild(heart)
+        }
+    }
+
+    /// Adds drifting cloud sprites across the sky area.
+    private func setupClouds() {
+        let loader = SpriteLoader.shared
+        let skyTop = size.height
+        let skyBottom = fenceY + 60
+
+        for i in 1...3 {
+            let cloud = loader.cloudSprite(variant: i)
+            cloud.size = CGSize(width: 80, height: 40)
+            let startX = CGFloat.random(in: -40...(size.width + 40))
+            let y = CGFloat.random(in: skyBottom...skyTop - 60)
+            cloud.position = CGPoint(x: startX, y: y)
+            cloud.zPosition = 0.5
+            cloud.alpha = 0.6
+            addChild(cloud)
+
+            let speed = CGFloat.random(in: 15...30)
+            let duration = TimeInterval((size.width + 120) / speed)
+            let drift = SKAction.sequence([
+                SKAction.moveTo(x: size.width + 60, duration: duration),
+                SKAction.moveTo(x: -60, duration: 0),
+            ])
+            cloud.run(SKAction.repeatForever(drift))
         }
     }
 
     // MARK: - Cow spawning
 
-    /// Creates a new cow with random spots and adds it to the field just below the fence.
+    /// Creates a new cow sprite and adds it to the field just below the fence.
     private func spawnCow() {
-        let cow = SKNode()
+        let cow = SpriteLoader.shared.cowSprite()
         let spawnX = CGFloat.random(in: cowRadius * 2...(size.width - cowRadius * 2))
         let spawnY = fenceY - cowRadius - 20
         cow.position = CGPoint(x: spawnX, y: spawnY)
-        cow.name = "cow"
-
-        let body = SKShapeNode(ellipseOf: CGSize(width: cowRadius * 2.2, height: cowRadius * 1.6))
-        body.fillColor = .white
-        body.strokeColor = SKColor(red: 0.2, green: 0.2, blue: 0.2, alpha: 1.0)
-        body.lineWidth = 2
-        cow.addChild(body)
-
-        for _ in 0..<3 {
-            let spot = SKShapeNode(ellipseOf: CGSize(width: CGFloat.random(in: 6...12),
-                                                       height: CGFloat.random(in: 5...9)))
-            spot.fillColor = SKColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 0.8)
-            spot.strokeColor = .clear
-            spot.position = CGPoint(x: CGFloat.random(in: -8...8),
-                                    y: CGFloat.random(in: -5...5))
-            cow.addChild(spot)
-        }
-
-        let head = SKShapeNode(circleOfRadius: 7)
-        head.fillColor = .white
-        head.strokeColor = SKColor(red: 0.2, green: 0.2, blue: 0.2, alpha: 1.0)
-        head.lineWidth = 1.5
-        head.position = CGPoint(x: 0, y: -cowRadius * 0.6)
-        cow.addChild(head)
-
-        let leftEye = SKShapeNode(circleOfRadius: 2)
-        leftEye.fillColor = .black
-        leftEye.position = CGPoint(x: -3, y: -cowRadius * 0.6 + 2)
-        cow.addChild(leftEye)
-
-        let rightEye = SKShapeNode(circleOfRadius: 2)
-        rightEye.fillColor = .black
-        rightEye.position = CGPoint(x: 3, y: -cowRadius * 0.6 + 2)
-        cow.addChild(rightEye)
+        cow.zPosition = 5
 
         cow.userData = NSMutableDictionary()
         cow.userData?["velocityX"] = CGFloat.random(in: -15...15)
@@ -380,7 +363,6 @@ class GameScene: SKScene {
         cow.userData?["state"] = "wandering"
         cow.userData?["wanderTimer"] = TimeInterval(0)
 
-        cow.zPosition = 5
         addChild(cow)
     }
 
@@ -400,6 +382,7 @@ class GameScene: SKScene {
             isDraggingFarmer = true
             dragOffset = CGPoint(x: farmer.position.x - location.x,
                                  y: farmer.position.y - location.y)
+            SoundManager.shared.playGiddyUp()
         }
     }
 
@@ -412,6 +395,14 @@ class GameScene: SKScene {
         let newY = max(ditchHeight + farmerRadius,
                        min(fenceY - farmerRadius, location.y + dragOffset.y))
         farmer.position = CGPoint(x: newX, y: newY)
+
+        // Dust particles (throttled)
+        let now = CACurrentMediaTime()
+        if now - lastDustTime > 0.3 {
+            lastDustTime = now
+            addChild(ParticleEffects.dustPuff(at: CGPoint(x: farmer.position.x,
+                                                           y: farmer.position.y - farmerRadius)))
+        }
     }
 
     /// Ends the farmer drag when the player lifts their finger.
@@ -449,6 +440,7 @@ class GameScene: SKScene {
 
         cow.childNode(withName: "countdownRing")?.removeFromParent()
         cow.childNode(withName: "countdownLabel")?.removeFromParent()
+        cow.childNode(withName: "bubbles")?.removeFromParent()
 
         let lassoLine = SKShapeNode()
         let path = CGMutablePath()
@@ -482,7 +474,11 @@ class GameScene: SKScene {
             cow.userData?["velocityX"] = CGFloat.random(in: -15...15)
             cow.userData?["wanderTimer"] = TimeInterval(0)
             cow.alpha = 1.0
-            cow.setScale(1.0)
+            cow.setScale(0.8)
+            // Restore walk texture
+            if let sprite = cow as? SKSpriteNode {
+                sprite.texture = SpriteLoader.shared.cowWalkTexture()
+            }
         }
 
         let fadeRemove = SKAction.sequence([
@@ -514,7 +510,7 @@ class GameScene: SKScene {
 
     // MARK: - Cow enters ditch (drowning state)
 
-    /// Transitions a cow into the drowning state with a countdown ring and bobbing animation.
+    /// Transitions a cow into the drowning state with countdown ring, bobbing, bubbles, and splash.
     private func cowFellInDitch(_ cow: SKNode) {
         cow.name = "drowningCow"
         cow.userData?["state"] = "drowning"
@@ -524,9 +520,23 @@ class GameScene: SKScene {
         cow.position.y = ditchHeight / 2
         cow.zPosition = 3
 
+        // Swap to drowning texture
+        if let sprite = cow as? SKSpriteNode {
+            sprite.texture = SpriteLoader.shared.cowDrowningTexture()
+        }
+
+        // Water splash particles + sound
+        addChild(ParticleEffects.waterSplash(at: CGPoint(x: cow.position.x, y: ditchHeight)))
+        SoundManager.shared.playSplash()
+
         let bobUp = SKAction.moveBy(x: 0, y: 5, duration: 0.5)
         let bobDown = SKAction.moveBy(x: 0, y: -5, duration: 0.5)
         cow.run(SKAction.repeatForever(SKAction.sequence([bobUp, bobDown])), withKey: "drowning")
+
+        // Drowning bubbles
+        let bubbles = ParticleEffects.drowningBubbles(at: .zero)
+        bubbles.name = "bubbles"
+        cow.addChild(bubbles)
 
         let ring = SKShapeNode(circleOfRadius: cowRadius * 1.8)
         ring.strokeColor = .red
@@ -572,6 +582,18 @@ class GameScene: SKScene {
         lives -= 1
         updateLivesDisplay()
 
+        // Heart pop animation on the lost heart
+        if lives >= 0 && lives < 3 {
+            let heartIdx = lives
+            if heartIdx < livesDisplay.children.count {
+                let lostHeart = livesDisplay.children[heartIdx]
+                lostHeart.run(SKAction.sequence([
+                    SKAction.scale(to: 1.5, duration: 0.1),
+                    SKAction.scale(to: 1.0, duration: 0.2)
+                ]))
+            }
+        }
+
         let shake = SKAction.sequence([
             SKAction.moveBy(x: -5, y: 0, duration: 0.05),
             SKAction.moveBy(x: 10, y: 0, duration: 0.05),
@@ -587,11 +609,14 @@ class GameScene: SKScene {
 
     // MARK: - Cow saved
 
-    /// Plays a celebration animation, increments the score, and removes the cow from the scene.
+    /// Plays a celebration animation with star particles, increments the score, and removes the cow.
     private func cowReachedSafety(_ cow: SKNode) {
         cow.name = "safe"
         score += 1
         scoreLabel.text = "Saved: \(score)"
+
+        // Celebration star particles
+        addChild(ParticleEffects.celebrationStars(at: cow.position))
 
         let scaleUp = SKAction.scale(to: 1.3, duration: 0.15)
         let scaleDown = SKAction.scale(to: 0.0, duration: 0.3)
@@ -617,6 +642,12 @@ class GameScene: SKScene {
                 SKAction.fadeOut(withDuration: 0.8)
             ]),
             SKAction.removeFromParent()
+        ]))
+
+        // Score pop animation
+        scoreLabel.run(SKAction.sequence([
+            SKAction.scale(to: 1.3, duration: 0.1),
+            SKAction.scale(to: 1.0, duration: 0.15)
         ]))
     }
 
@@ -740,6 +771,11 @@ class GameScene: SKScene {
             wanderTimer = 0
             vx = CGFloat.random(in: -20...20)
             vy = -currentCowSpeed + CGFloat.random(in: -10...5)
+
+            // Occasional moo (~15% chance per wander cycle)
+            if Float.random(in: 0...1) < 0.15 {
+                SoundManager.shared.playMoo()
+            }
         }
 
         let dx = cow.position.x - farmer.position.x
